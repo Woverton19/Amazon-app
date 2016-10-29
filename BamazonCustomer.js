@@ -1,66 +1,81 @@
 var mysql = require('mysql');
+var inquirer = require('inquirer');
 var prompt = require("prompt");
 var connection = mysql.createConnection({
     host: "localhost",
     port: 3306,
-    user: "root", //Your username
-    password: "Wo@3", //Your password
+    user: "root", 
+    password: "Wo@3", 
     database: "bamazondb"
 })
 
-connection.connect(function(err) {
-    if (err) throw err;
-    console.log("connected as id " + connection.threadId);
-})
+var buying = function(){
 
-function display(){ 
-    connection.query('SELECT * FROM products', function(err,res) {
-	    for (var i = 0; i < res.length; i++) {
-            
-            console.log("\nProduct ID:" + res[i].Itemid);
-            console.log("\nProduct Name:" + res[i].ProductName);
-            console.log("\nDepartment Name:" + res[i].DepartmentName);
-            console.log("\nPrice:" + res[i].Price);
-            console.log("\nStock Quantity:" + res[i].StockQuantity);
-            console.log("\n*******************************");
-        }
+    connection.query("SELECT * FROM products", function(err, result) {
+        return (table(result));
+      
+      });
 
-        buying();
-    });
-}
-function buying(err, result) {
+    setTimeout(function() {
         prompt.get(['Itemid', 'StockQuantity'], function (err, result) {
             var shopperItem = result.Itemid;
-            var shopperQuantity = result.StockQuantity;
-            inventChecker(shopperItem, shopperQuantity);
-            
-        });
-    };
+            var shopperQuantity =result.StockQuantity;
 
-function updateDatabase (id, quantity){
-    connection.query('update products set StockQuantity = ' + quantity + ' where Itemid = ' + id, function(err, result) {
-        if (err) throw err;
-    });
-    display();
+            inventoryCheck(shopperItem, shopperQuantity);
+            setTimeout(function() {buying();}, 3500);
+
+        });
+    }, 750);
 }
 
-function inventChecker (id, quantity){
+
+
+var inventoryCheck = function (id, quantity){
     connection.query('SELECT * FROM products WHERE Itemid = ' + id, function (err, result){
         if (err) throw err;
 
-        var inventory = result[0].StockQuantity;
+        var total = result[0].Price * quantity;
+
+        var inventory = result[0].StockQuantity - quantity;
 
         if (inventory < 0){
-            console.log('Insufficient stock. please pick another item?');
+            console.log('Insufficient stock. There are only '+ result[0].StockQuantity + 'item(s) left.');
         } else {
-            console.log('User has bought ' + quantity + ' ' + result[0].ProductName);
-            updateDatabase(id, inventory);
+            console.log('There are ' + inventory + ' ' + result[0].ProductName + ' remaining.')
+            databaseUpdate(id, inventory)
         }
     });
-    display();
 }
 
 
-display();
+
+var databaseUpdate = function(id, quantity){
+    connection.query('update products set StockQuantity = ' + quantity + ' where ItemID = ' + id, function(err, result) {
+        if (err) throw err;
+    });
+}
+
+ 
+
+function table(items){
+    for (var i = 0; i < items.length; i++) {
+        console.log('------------------------');
+        console.log('ItemID: ' + items[i].Itemid);
+        console.log('Item: ' + items[i].ProductName);
+        console.log('Department: ' + items[i].DepartmentName);
+        console.log('Price: $' + items[i].Price);
+    }
+    console.log('------------------------');
+}
 
 
+
+connection.connect(function(err) {
+    if (err) {
+        console.error('error connecting: ' + err);
+        return;
+    }
+});
+
+
+buying();
